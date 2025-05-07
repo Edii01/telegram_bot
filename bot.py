@@ -163,12 +163,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def set_commands(application):
     commands = [
-        BotCommand("menu", "Меню бога с основными командами"),
-        BotCommand("play", "Просмотр серий в телеграме"),
-        BotCommand("find", "Ссылки на скачивание и просмотр"),
-        BotCommand("calendar", "Календарь релизов"),
+        BotCommand("start", "Запустить бота и показать меню"),
+        BotCommand("remindme", "Создать напоминание: /remindme 10 Тема"),
+        BotCommand("show_cases", "Показать все активные кейсы"),
     ]
     await application.bot.set_my_commands(commands)
+
+async def show_cases(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Ваш существующий код из callback_query
+    user_id = update.effective_user.id
+    user_cases = [c for c in active_cases.values() if c.user_id == user_id]
 
 # Запуск бота
 def main():
@@ -176,6 +180,7 @@ def main():
     
     # Добавь эту строку после создания app:
     app.post_init = set_commands
+    app.add_handler(CommandHandler("show_cases", show_cases))
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("remindme", remindme))
