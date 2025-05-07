@@ -1,6 +1,7 @@
 import os
 import logging
 import asyncio
+from telegram import BotCommand
 from uuid import uuid4
 from datetime import datetime, timedelta
 
@@ -160,9 +161,21 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         tip = TIPS[datetime.now().second % len(TIPS)]
         await query.message.reply_text(f"💡 Подсказка: {tip}")
 
+async def set_commands(application):
+    commands = [
+        BotCommand("menu", "Меню бога с основными командами"),
+        BotCommand("play", "Просмотр серий в телеграме"),
+        BotCommand("find", "Ссылки на скачивание и просмотр"),
+        BotCommand("calendar", "Календарь релизов"),
+    ]
+    await application.bot.set_my_commands(commands)
+
 # Запуск бота
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
+    
+    # Добавь эту строку после создания app:
+    app.post_init = set_commands
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("remindme", remindme))
