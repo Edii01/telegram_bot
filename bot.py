@@ -93,14 +93,14 @@ class BotHandlers:
             topic = " ".join(context.args[1:])
             user_id = update.effective_user.id
 
-        case = Case(
-            case_id=str(uuid4())[:8],
-            user_id=user_id,
-            duration=duration,
-            topic=topic,
-            start_time=datetime.now(),
-            end_time=datetime.now() + timedelta(minutes=duration)
-        ) 
+            case = Case(
+                case_id=str(uuid4())[:8],
+                user_id=user_id,
+                duration=duration,
+                topic=topic,
+                start_time=datetime.now(),
+                end_time=datetime.now() + timedelta(minutes=duration)
+            ) 
             self.case_manager.add_case(case)
 
             msg = await update.message.reply_text(
