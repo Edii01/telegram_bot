@@ -215,6 +215,7 @@ class BotHandlers:
                         message_id=case.message_id,
                         text=text,
                         reply_markup=InlineKeyboardMarkup(keyboard)
+                    )
                     await query.message.reply_text(f"⏱ Время продлено на 5 минут.")
         elif data.startswith("tip_"):
             tip = Config.TIPS[datetime.now().second % len(Config.TIPS)]
