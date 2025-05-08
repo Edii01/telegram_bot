@@ -83,7 +83,25 @@ class BotHandlers:
             "Используй /remindme чтобы создать напоминание",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
-
+    async def show_cases(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        user_id = update.effective_user.id
+        user_cases = [c for c in self.case_manager.active_cases.values() if c.user_id == user_id]
+        
+        if not user_cases:
+            await update.message.reply_text("🗂 У тебя нет активных кейсов.")
+            return
+        
+        for case in user_cases:
+            keyboard = [
+                [
+                    InlineKeyboardButton("❌ Удалить", callback_data=f"delete_{case.case_id}"),
+                    InlineKeyboardButton("➕ 5 мин", callback_data=f"extend_{case.case_id}"),
+                    InlineKeyboardButton("ℹ️ Подсказка", callback_data=f"tip_{case.case_id}")
+                ]
+            ]
+            text = f"🆔 {case.case_id}\n📌 {case.topic}\n⏱ Осталось: {case.time_left()}"
+            await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+            
     async def remindme(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             if len(context.args) < 2:
