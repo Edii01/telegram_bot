@@ -83,25 +83,7 @@ class BotHandlers:
             "Используй /remindme чтобы создать напоминание",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
-    async def show_cases(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        user_id = update.effective_user.id
-        user_cases = [c for c in self.case_manager.active_cases.values() if c.user_id == user_id]
-        
-        if not user_cases:
-            await update.message.reply_text("🗂 У тебя нет активных кейсов.")
-            return
-        
-        for case in user_cases:
-            keyboard = [
-                [
-                    InlineKeyboardButton("❌ Удалить", callback_data=f"delete_{case.case_id}"),
-                    InlineKeyboardButton("➕ 5 мин", callback_data=f"extend_{case.case_id}"),
-                    InlineKeyboardButton("ℹ️ Подсказка", callback_data=f"tip_{case.case_id}")
-                ]
-            ]
-            text = f"🆔 {case.case_id}\n📌 {case.topic}\n⏱ Осталось: {case.time_left()}"
-            await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
-            
+
     async def remindme(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             if len(context.args) < 2:
@@ -118,7 +100,8 @@ class BotHandlers:
                 topic=topic,
                 start_time=datetime.now(),
                 end_time=datetime.now() + timedelta(minutes=duration)
-            ) 
+            )
+            
             self.case_manager.add_case(case)
 
             msg = await update.message.reply_text(
@@ -151,7 +134,25 @@ class BotHandlers:
             )
             self.case_manager.complete_case(case_id)
 
-# --- Дополнительный функционал --- #
+    async def show_cases(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        user_id = update.effective_user.id
+        user_cases = [c for c in self.case_manager.active_cases.values() if c.user_id == user_id]
+        
+        if not user_cases:
+            await update.message.reply_text("🗂 У тебя нет активных кейсов.")
+            return
+        
+        for case in user_cases:
+            keyboard = [
+                [
+                    InlineKeyboardButton("❌ Удалить", callback_data=f"delete_{case.case_id}"),
+                    InlineKeyboardButton("➕ 5 мин", callback_data=f"extend_{case.case_id}"),
+                    InlineKeyboardButton("ℹ️ Подсказка", callback_data=f"tip_{case.case_id}")
+                ]
+            ]
+            text = f"🆔 {case.case_id}\n📌 {case.topic}\n⏱ Осталось: {case.time_left()}"
+            await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+
     async def show_stats(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.effective_user.id
         completed = len([c for c in self.case_manager.completed_cases if c.user_id == user_id])
@@ -175,6 +176,49 @@ class BotHandlers:
             "ℹ️ Используй кнопки под сообщениями для быстрого управления"
         )
         await update.message.reply_text(help_text)
+
+    async def button_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        query = update.callback_query
+        await query.answer()
+        data = query.data
+        user_id = update.effective_user.id
+
+        if data == "new_case":
+            await query.message.reply_text("✍️ Отправь сообщение:\n/remindme 10 Проверка отчета")
+        elif data == "show_cases":
+            await self.show_cases(update, context)
+        elif data == "stats":
+            await self.show_stats(update, context)
+        elif data.startswith("delete_"):
+            case_id = data.split("_")[1]
+            if case_id in self.case_manager.active_cases:
+                case = self.case_manager.active_cases[case_id]
+                if case.user_id == user_id:
+                    del self.case_manager.active_cases[case_id]
+                    await query.message.reply_text(f"🗑 Кейс «{case.topic}» удалён.")
+        elif data.startswith("extend_"):
+            case_id = data.split("_")[1]
+            if case_id in self.case_manager.active_cases:
+                case = self.case_manager.active_cases[case_id]
+                if case.user_id == user_id:
+                    case.extend_time(5)
+                    text = f"🆔 {case.case_id}\n📌 {case.topic}\n⏱ Осталось: {case.time_left()}"
+                    keyboard = [
+                        [
+                            InlineKeyboardButton("❌ Удалить", callback_data=f"delete_{case.case_id}"),
+                            InlineKeyboardButton("➕ 5 мин", callback_data=f"extend_{case.case_id}"),
+                            InlineKeyboardButton("ℹ️ Подсказка", callback_data=f"tip_{case.case_id}")
+                        ]
+                    ]
+                    await context.bot.edit_message_text(
+                        chat_id=user_id,
+                        message_id=case.message_id,
+                        text=text,
+                        reply_markup=InlineKeyboardMarkup(keyboard)
+                    await query.message.reply_text(f"⏱ Время продлено на 5 минут.")
+        elif data.startswith("tip_"):
+            tip = Config.TIPS[datetime.now().second % len(Config.TIPS)]
+            await query.message.reply_text(f"💡 Подсказка: {tip}")
 
 # --- Запуск бота --- #
 async def set_bot_commands(application: Application):
@@ -204,7 +248,12 @@ def main():
     app.add_handler(CallbackQueryHandler(handlers.button_handler))
 
     # Запуск бота
-    logging.info("Бот запущен и готов к работе!")
+    logging.basicConfig(
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        level=logging.INFO
+    )
+    logger = logging.getLogger(__name__)
+    logger.info("Бот запущен и готов к работе!")
     app.run_polling()
 
 if __name__ == "__main__":
